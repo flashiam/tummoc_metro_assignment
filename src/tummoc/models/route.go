@@ -5,44 +5,20 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
-	// "github.com/beego/beego/v2/client/cache"
-	// _ "github.com/beego/beego/v2/client/cache/redis"
 )
 
-var (
-	Location map[string]*Object
-)
-
-var (
-	route map[int]*Route
-)
-
-type Play interface {
-	Add()
-	Get()
-	GetAll()
-	Update()
-	Delete()
+type RoutePlay interface {
+	RouteAdd()
+	RouteGet()
+	routeGetFull()
+	RouteUpdates()
+	RouteDeletes()
 }
 
 type Route struct {
-	RouteId orm.BigIntegerField
-	Station Station
-}
-
-type Station struct {
-	StationId orm.BigIntegerField
-	Name      orm.CharField
-	Location  orm.JSONField
-}
-
-type TimeKey struct {
-	KeyId     orm.BigIntegerField
-	Route     Route
-	Center    Station
-	Up        Station
-	Down      Station
-	TimeValue orm.IntegerField
+	RouteId      orm.BigIntegerField
+	StartStation Station
+	EndStation   Station
 }
 
 func init() {
@@ -53,87 +29,82 @@ func init() {
 	orm.SetMaxOpenConns("default", 100)
 	orm.DefaultTimeLoc = time.Local
 	orm.RegisterModel(new(Route), new(TimeKey), new(Station))
-
-	// r := Route
-	// RouteList = &r
-	// bm, err := cache.NewCache("redis", `{"key":"collectionName","conn":":6039","dbNum":"0","password":"thePassWord"}`)
 }
 
-func main() {
-	name := "default"
-	force := true
-	verbose := true
+func RouteAdd(r Route) Route {
+	o := orm.NewOrm()
+	var route Route
+	route.RouteId = r.RouteId
+	route.StartStation = r.StartStation
+	route.EndStation = r.EndStation
 
-	err := orm.RunSyncdb(name, force, verbose)
-	if err != nil {
-		fmt.Println(err)
+	id, err := o.Insert(&route)
+	if err == nil {
+		fmt.Println(id)
 	}
+
+	return route
 }
 
-func (rot Route) Get(routid int64) []*Route {
+func RouteGet(routid int64) Route {
+	o := orm.NewOrm()
+	route := Route{RouteId: orm.BigIntegerField(routid)}
+
+	err := o.Read(&route)
+
+	if err == orm.ErrNoRows {
+		fmt.Println("No result found")
+	} else if err == orm.ErrMissPK {
+		fmt.Println("No Primary Keys Found")
+	} else {
+		fmt.Println(route.RouteId)
+	}
+
+	return route
+}
+
+func RouteGetFull() []*Route {
 	o := orm.NewOrm()
 	route := new(Route)
 	qs := o.QueryTable(route)
 	var r []*Route
-
 	qs.All(r)
-
 	return r
-
 }
 
-func GetRoute(object Route) (RouteId string) {
+func RouteUpdates(routeid int64, rr *Route) Route {
+	o := orm.NewOrm()
+	route := Route{RouteId: orm.BigIntegerField(routeid)}
 
+	if o.Read(&route) == nil {
+		route.StartStation = Station{StationId: rr.StartStation.StationId}
+		if num, err := o.Update(&route, "StartStation"); err == nil {
+			fmt.Println(num)
+			return route
+		} else {
+			fmt.Println(err)
+		}
+		route.EndStation = Station{StationId: rr.EndStation.StationId}
+		if num, err := o.Update(&route, "EndStation"); err == nil {
+			fmt.Println(num)
+			return route
+		} else {
+			fmt.Println(err)
+			return route
+		}
+	}
+	return Route{RouteId: 1}
 }
 
-func GetAllRoutes(object Route) (RouteId string) {
-
-}
-
-func UpdateRoute(object Route) (RouteId string) {
-
-}
-
-func DeleteRoute(object Route) (RouteId string) {
-
-}
-
-func AddStation(object Route) (RouteId string) {
-
-}
-
-func GetStation(object Route) (RouteId string) {
-
-}
-
-func GetAllStation(object Route) (RouteId string) {
-
-}
-
-func UpdateStation(object Route) (RouteId string) {
-
-}
-
-func DeleteStation(object Route) (RouteId string) {
-
-}
-
-func AddTimeKey(object Route) (RouteId string) {
-
-}
-
-func GetTime(object Route) (RouteId string) {
-
-}
-
-func GetAllTimeKey(object Route) (RouteId string) {
-
-}
-
-func UpdateTimeKey(object Route) (RouteId string) {
-
-}
-
-func DeleteTimeKey(object Route) (RouteId string) {
-
+func RouteDeletes(routeid int64, rr Route) Route {
+	o := orm.NewOrm()
+	route := Route{RouteId: orm.BigIntegerField(routeid)}
+	if o.Read(&route) == nil {
+		o.Delete(route)
+		return route
+	} else {
+		errs := "cannot delete"
+		fmt.Println(errs)
+	}
+	return Route{RouteId: 1}
 }
