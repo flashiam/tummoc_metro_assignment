@@ -16,22 +16,22 @@ type SprintPlay interface {
 }
 
 type Sprint struct {
-	SprintId  orm.BigIntegerField
-	StartTime orm.TimeField
-	EndTime   orm.TimeField
-	Route     Route
-	TimeKey   TimeKey
+	SprintId  int64      `orm:"index;unique;pk"`
+	StartTime time.Time  `orm:"type(datetime)"`
+	EndTime   time.Time  `orm:"type(datetime)"`
+	Route     *Route     `orm:"rel(fk);"`
+	TimeKey   []*TimeKey `orm:"rel(m2m);"`
 }
 
-func init() {
-	orm.RegisterDriver("postgres", orm.DRPostgres)
-	orm.RegisterDataBase("default", "postgres",
-		"user=tummoc password=specsoid host=127.0.0.1 port=5432 dbname=tummoc sslmode=disable")
-	orm.SetMaxIdleConns("default", 10)
-	orm.SetMaxOpenConns("default", 100)
-	orm.DefaultTimeLoc = time.Local
-	orm.RegisterModel(new(Sprint))
-}
+// func init() {
+// 	orm.RegisterDriver("postgres", orm.DRPostgres)
+// 	orm.RegisterDataBase("default", "postgres",
+// 		"user=tummoc password=specsoid host=127.0.0.1 port=5432 dbname=tummoc sslmode=disable")
+// 	orm.SetMaxIdleConns("default", 10)
+// 	orm.SetMaxOpenConns("default", 100)
+// 	orm.DefaultTimeLoc = time.Local
+// 	orm.RegisterModel(new(Sprint))
+// }
 
 func SprintAdds(s Sprint) Sprint {
 	o := orm.NewOrm()
@@ -52,7 +52,7 @@ func SprintAdds(s Sprint) Sprint {
 
 func SprintGet(sprintid int64) Sprint {
 	o := orm.NewOrm()
-	sprint := Sprint{SprintId: orm.BigIntegerField(sprintid)}
+	sprint := Sprint{SprintId: sprintid}
 
 	err := o.Read(&sprint)
 
@@ -78,10 +78,10 @@ func SprintGetFull() []*Sprint {
 
 func SprintUpdates(sprintid int64, ss *Sprint) Sprint {
 	o := orm.NewOrm()
-	sprint := Sprint{SprintId: orm.BigIntegerField(sprintid)}
+	sprint := Sprint{SprintId: sprintid}
 
 	if o.Read(&sprint) == nil {
-		sprint.Route = Route{RouteId: ss.Route.RouteId}
+		sprint.Route = &Route{RouteId: ss.Route.RouteId}
 		if num, err := o.Update(&sprint, "Route"); err == nil {
 			fmt.Println(num)
 			return sprint
@@ -118,7 +118,7 @@ func SprintUpdates(sprintid int64, ss *Sprint) Sprint {
 
 func SprintDeletes(sprintid int64, ss Sprint) Sprint {
 	o := orm.NewOrm()
-	sprint := Sprint{SprintId: orm.BigIntegerField(sprintid)}
+	sprint := Sprint{SprintId: sprintid}
 	if o.Read(&sprint) == nil {
 		o.Delete(sprint)
 		return sprint

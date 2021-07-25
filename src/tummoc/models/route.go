@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 )
@@ -16,19 +15,13 @@ type RoutePlay interface {
 }
 
 type Route struct {
-	RouteId      orm.BigIntegerField
-	StartStation Station
-	EndStation   Station
+	RouteId      int64    `orm:"index;unique;pk"`
+	StartStation *Station `orm:"rel(one);"`
+	EndStation   *Station `orm:"rel(one);"`
 }
 
 func init() {
-	orm.RegisterDriver("postgres", orm.DRPostgres)
-	orm.RegisterDataBase("default", "postgres",
-		"user=tummoc password=specsoid host=127.0.0.1 port=5432 dbname=tummoc sslmode=disable")
-	orm.SetMaxIdleConns("default", 10)
-	orm.SetMaxOpenConns("default", 100)
-	orm.DefaultTimeLoc = time.Local
-	orm.RegisterModel(new(Route), new(TimeKey), new(Station))
+
 }
 
 func RouteAdd(r Route) Route {
@@ -48,7 +41,7 @@ func RouteAdd(r Route) Route {
 
 func RouteGet(routid int64) Route {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routid)}
+	route := Route{RouteId: routid}
 
 	err := o.Read(&route)
 
@@ -74,17 +67,17 @@ func RouteGetFull() []*Route {
 
 func RouteUpdates(routeid int64, rr *Route) Route {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routeid)}
+	route := Route{RouteId: routeid}
 
 	if o.Read(&route) == nil {
-		route.StartStation = Station{StationId: rr.StartStation.StationId}
+		route.StartStation = &Station{StationId: rr.StartStation.StationId}
 		if num, err := o.Update(&route, "StartStation"); err == nil {
 			fmt.Println(num)
 			return route
 		} else {
 			fmt.Println(err)
 		}
-		route.EndStation = Station{StationId: rr.EndStation.StationId}
+		route.EndStation = &Station{StationId: rr.EndStation.StationId}
 		if num, err := o.Update(&route, "EndStation"); err == nil {
 			fmt.Println(num)
 			return route
@@ -98,7 +91,7 @@ func RouteUpdates(routeid int64, rr *Route) Route {
 
 func RouteDeletes(routeid int64, rr Route) Route {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routeid)}
+	route := Route{RouteId: routeid}
 	if o.Read(&route) == nil {
 		o.Delete(route)
 		return route

@@ -25,6 +25,11 @@ func init() {
 				&controllers.UserController{},
 			),
 		),
+		beego.NSNamespace("/route",
+			beego.NSInclude(
+				&controllers.RouteController{},
+			),
+		),
 	)
 	beego.AddNamespace(ns)
 }

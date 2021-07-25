@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"tummoc/models"
 	"encoding/json"
+	"tummoc/models"
 
 	beego "github.com/beego/beego/v2/server/web"
 )
@@ -89,4 +89,3 @@ func (o *ObjectController) Delete() {
 	o.Data["json"] = "delete success!"
 	o.ServeJSON()
 }
-

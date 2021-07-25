@@ -2,9 +2,10 @@ package models
 
 import (
 	"fmt"
-	"time"
+	. "tummoc/micro"
 
 	"github.com/beego/beego/v2/client/orm"
+	_ "github.com/lib/pq"
 )
 
 type StationPlay interface {
@@ -24,188 +25,236 @@ type TimeKeyPlay interface {
 }
 
 type Location struct {
-	Latitude  orm.FloatField
-	Longitude orm.FloatField
+	LocId     int64   `orm:"index;unique;pk"`
+	Latitude  float32 `orm:"digits(8);decimals(6)"`
+	Longitude float32 `orm:"digits(8);decimals(6)"`
 }
 type Station struct {
-	StationId orm.BigIntegerField
-	Name      orm.CharField
-	Location  Location
+	StationId int64 `orm:"index;unique;pk"`
+	Name      string
+	Location  *Location `orm:"rel(one);"`
 }
 type TimeKey struct {
-	KeyId     orm.BigIntegerField
-	Center    Station
-	Up        Station
-	Down      Station
-	TimeValue orm.IntegerField
+	KeyId         int64    `orm:"index;unique;pk"`
+	Center        *Station `orm:"rel(fk);"`
+	Up            *Station `orm:"rel(fk);"`
+	Down          *Station `orm:"rel(fk);"`
+	TimeValueUp   int8
+	TimeValueDown int8
+	Sprint        []*Sprint `orm:"reverse(many)"`
 }
 
-func init() {
-	orm.RegisterDriver("postgres", orm.DRPostgres)
-	orm.RegisterDataBase("default", "postgres",
-		"user=tummoc password=specsoid host=127.0.0.1 port=5432 dbname=tummoc sslmode=disable")
-	orm.SetMaxIdleConns("default", 10)
-	orm.SetMaxOpenConns("default", 100)
-	orm.DefaultTimeLoc = time.Local
-	orm.RegisterModel(new(Route), new(TimeKey), new(Station))
-}
-
-func TimeKeyAdd(r Route) Route {
+func TimeKeyAdd(t TimeKey) TimeKey {
 	o := orm.NewOrm()
-	var route Route
-	route.RouteId = r.RouteId
-	route.StartStation = r.StartStation
-	route.EndStation = r.EndStation
+	var timekey TimeKey
+	timekey.KeyId = t.KeyId
+	timekey.Up = t.Up
+	timekey.Down = t.Down
 
-	id, err := o.Insert(&route)
+	id, err := o.Insert(&timekey)
 	if err == nil {
 		fmt.Println(id)
 	}
 
-	return route
+	return timekey
 }
 
-func TimeKeyGet(routid int64) Route {
+func TimeKeyGet(timekeyid int64) TimeKey {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routid)}
+	timekey := TimeKey{KeyId: timekeyid}
 
-	err := o.Read(&route)
+	err := o.Read(&timekey)
 
 	if err == orm.ErrNoRows {
 		fmt.Println("No result found")
 	} else if err == orm.ErrMissPK {
 		fmt.Println("No Primary Keys Found")
 	} else {
-		fmt.Println(route.RouteId)
+		fmt.Println(timekey.KeyId)
 	}
 
-	return route
+	return timekey
 }
 
-func TimeKeyGetFull() []*Route {
+func TimeKeyGetFull() []*TimeKey {
 	o := orm.NewOrm()
-	route := new(Route)
-	qs := o.QueryTable(route)
-	var r []*Route
-	qs.All(r)
-	return r
+	timekey := new(TimeKey)
+	qs := o.QueryTable(timekey)
+	var t []*TimeKey
+	qs.All(t)
+	return t
 }
 
-func TimeKeyUpdates(routeid int64, rr *Route) Route {
+func TimeKeyUpdates(timekeyid int64, tt *TimeKey) TimeKey {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routeid)}
+	timekey := TimeKey{KeyId: timekeyid}
 
-	if o.Read(&route) == nil {
-		route.StartStation = Station{StationId: rr.StartStation.StationId}
-		if num, err := o.Update(&route, "StartStation"); err == nil {
+	if o.Read(&timekey) == nil {
+		timekey.Center = &Station{StationId: tt.Center.StationId}
+		if num, err := o.Update(&timekey, "Center"); err == nil {
 			fmt.Println(num)
-			return route
+			return timekey
 		} else {
-			errs := "cannot update start station"
-			fmt.Println(errs)
+			fmt.Println(err)
 		}
-		route.EndStation = Station{StationId: rr.EndStation.StationId}
-		if num, err := o.Update(&route, "EndStation"); err == nil {
+		timekey.Up = &Station{StationId: tt.Up.StationId}
+		if num, err := o.Update(&timekey, "Up"); err == nil {
 			fmt.Println(num)
-			return route
+			return timekey
 		} else {
-			errs := "cannot update end station"
-			fmt.Println(errs)
-			return route
+			fmt.Println(err)
+		}
+		timekey.Down = &Station{StationId: tt.Down.StationId}
+		if num, err := o.Update(&timekey, "Down"); err == nil {
+			fmt.Println(num)
+			return timekey
+		} else {
+			fmt.Println(err)
+		}
+		timekey.TimeValueDown = tt.TimeValueDown
+		if num, err := o.Update(&timekey, "TimeValueDown"); err == nil {
+			fmt.Println(num)
+			return timekey
+		} else {
+			fmt.Println(err)
+		}
+		timekey.TimeValueUp = tt.TimeValueUp
+		if num, err := o.Update(&timekey, "TimeValueUp"); err == nil {
+			fmt.Println(num)
+			return timekey
+		} else {
+			fmt.Println(err)
 		}
 	}
-	return Route{RouteId: 1}
+
+	return TimeKey{KeyId: 1}
+
 }
 
-func TimeKeyDeletes(routeid int64, rr Route) Route {
+func TimeKeyDeletes(timekeyid int64, tt TimeKey) TimeKey {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routeid)}
-	if o.Read(&route) == nil {
-		o.Delete(route)
-		return route
+	timekey := TimeKey{KeyId: timekeyid}
+	if o.Read(&timekey) == nil {
+		o.Delete(timekey)
+		return timekey
 	} else {
 		errs := "cannot delete"
 		fmt.Println(errs)
 	}
-	return Route{RouteId: 1}
+	return TimeKey{KeyId: 1}
 }
 
-func StationAdd(r Route) Route {
+func StationAdd(s Station) Station {
 	o := orm.NewOrm()
-	var route Route
-	route.RouteId = r.RouteId
-	route.StartStation = r.StartStation
-	route.EndStation = r.EndStation
+	var station Station
+	station.StationId = s.StationId
+	station.Name = s.Name
+	station.Location = s.Location
 
-	id, err := o.Insert(&route)
+	id, err := o.Insert(&station)
 	if err == nil {
 		fmt.Println(id)
 	}
 
-	return route
+	return station
 }
 
-func StationGet(routid int64) Route {
+func StationGet(stationid int64) Station {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routid)}
+	station := Station{StationId: stationid}
 
-	err := o.Read(&route)
+	err := o.Read(&station)
 
 	if err == orm.ErrNoRows {
 		fmt.Println("No result found")
 	} else if err == orm.ErrMissPK {
 		fmt.Println("No Primary Keys Found")
 	} else {
-		fmt.Println(route.RouteId)
+		fmt.Println(station.StationId)
 	}
 
-	return route
+	return station
 }
 
-func StationGetFull() []*Route {
+func StationGetFull() []*Station {
 	o := orm.NewOrm()
-	route := new(Route)
-	qs := o.QueryTable(route)
-	var r []*Route
-	qs.All(r)
-	return r
+	station := new(Station)
+	qs := o.QueryTable(station)
+	var s []*Station
+	qs.All(s)
+	return s
 }
 
-func StationUpdates(routeid int64, rr *Route) Route {
+func StationUpdates(stationid int64, ss *Station) Station {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routeid)}
+	station := Station{StationId: stationid}
 
-	if o.Read(&route) == nil {
-		route.StartStation = Station{StationId: rr.StartStation.StationId}
-		if num, err := o.Update(&route, "StartStation"); err == nil {
+	if o.Read(&station) == nil {
+		station.Name = ss.Name
+		if num, err := o.Update(&station, "Name"); err == nil {
 			fmt.Println(num)
-			return route
+			return station
 		} else {
-			errs := "cannot update start station"
-			fmt.Println(errs)
+			fmt.Println(err)
 		}
-		route.EndStation = Station{StationId: rr.EndStation.StationId}
-		if num, err := o.Update(&route, "EndStation"); err == nil {
+		station.Location = ss.Location
+		if num, err := o.Update(&station, "Location"); err == nil {
 			fmt.Println(num)
-			return route
+			return station
 		} else {
-			errs := "cannot update end station"
-			fmt.Println(errs)
-			return route
+			fmt.Println(err)
 		}
+
 	}
-	return Route{RouteId: 1}
+	return Station{StationId: 1}
 }
 
-func StationDeletes(routeid int64, rr Route) Route {
+func StationDeletes(stationid int64, ss Station) Station {
 	o := orm.NewOrm()
-	route := Route{RouteId: orm.BigIntegerField(routeid)}
-	if o.Read(&route) == nil {
-		o.Delete(route)
-		return route
+	station := Station{StationId: stationid}
+	if o.Read(&station) == nil {
+		o.Delete(station)
+		return station
 	} else {
 		errs := "cannot delete"
 		fmt.Println(errs)
 	}
-	return Route{RouteId: 1}
+	return Station{StationId: 1}
+}
+
+type Coordinate struct {
+	Lats  float64
+	Longs float64
+}
+
+func GetLocation(coordinate *Coordinate) *Station {
+	o := orm.NewOrm()
+	location := new(Location)
+	qs := o.QueryTable(location)
+	var l []*Location
+	qs.All(l)
+
+	var min float64 = Distance(float64(l[0].Latitude), float64(l[0].Longitude), coordinate.Lats, coordinate.Longs)
+	var locid int64 = l[0].LocId
+
+	for _, j := range l {
+		d := Distance(float64(j.Latitude), float64(j.Longitude), coordinate.Lats, coordinate.Longs)
+		if min > d {
+			min = d
+			locid = j.LocId
+		}
+	}
+
+	station := Station{Location: &Location{LocId: locid}}
+	err := o.Read(&station)
+
+	if err == orm.ErrNoRows {
+		fmt.Println("No result found")
+	} else if err == orm.ErrMissPK {
+		fmt.Println("No Primary Keys Found")
+	} else {
+		fmt.Println(station.StationId)
+	}
+
+	return &station
 }
