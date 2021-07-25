@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"time"
 	. "tummoc/micro"
 
 	"github.com/beego/beego/v2/client/orm"
@@ -257,4 +258,71 @@ func GetLocation(coordinate *Coordinate) *Station {
 	}
 
 	return &station
+}
+
+func GetTime(station *Station, time *time.Time) int64 {
+	timekeyforthisstation := TimeKey{Center: station}
+
+	o := orm.NewOrm()
+	sprint := new(Sprint)
+	qs := o.QueryTable(sprint)
+	var s []*Sprint
+	qs.All(s)
+
+	var currentSprint *Sprint
+	var currentRoute *Route
+	var currentStation *Station
+	min := s[0].StartTime
+
+	for _, j := range s {
+		if time.Sub(min) > time.Sub(j.StartTime) {
+			min = j.StartTime
+			currentSprint = j
+		} else {
+			currentSprint = s[0]
+		}
+	}
+	currentRoute = currentSprint.Route
+	timelapsedfromsprintstart := int64(time.Sub(min).Minutes())
+
+	var alltimekeysforthisroute []*TimeKey
+
+	for _, k := range s {
+		tks := Sprint{Route: currentRoute}
+		alltimekeysforthisroute = append(alltimekeysforthisroute, tks.TimeKey...)
+		fmt.Println(k.SprintId)
+	}
+
+	var timecount int8
+
+	for i, x := range alltimekeysforthisroute {
+		timecount += alltimekeysforthisroute[i].TimeValueDown
+		if timecount > int8(timelapsedfromsprintstart) {
+			currentStation = x.Center
+		}
+	}
+
+	timekeyforcurrentstation := TimeKey{Center: currentStation}
+
+	var wait int64
+
+	for i := timekeyforcurrentstation.KeyId; i <= timekeyforthisstation.KeyId; i++ {
+		key := &TimeKey{KeyId: i}
+		wait += int64(key.TimeValueDown)
+	}
+
+	return wait
+}
+
+type Node struct {
+	NodeStation *Station
+	Time        time.Time
+}
+
+func NodeCreate(station *Station, timer *time.Time) *Node {
+	wait := GetTime(station, timer)
+	times := timer.Add(time.Minute * time.Duration(wait))
+
+	nd := &Node{NodeStation: station, Time: times}
+	return nd
 }
