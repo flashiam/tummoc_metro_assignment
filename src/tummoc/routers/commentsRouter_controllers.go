@@ -124,4 +124,13 @@ func init() {
 			Filters:          nil,
 			Params:           nil})
 
+	beego.GlobalControllerRouter["tummoc/controllers:RouteController"] = append(beego.GlobalControllerRouter["tummoc/controllers:RouteController"],
+		beego.ControllerComments{
+			Method:           "TimekeyGetter",
+			Router:           "/timekeys",
+			AllowHTTPMethods: []string{"get"},
+			MethodParams:     param.Make(),
+			Filters:          nil,
+			Params:           nil})
+
 }

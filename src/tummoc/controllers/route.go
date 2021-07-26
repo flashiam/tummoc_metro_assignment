@@ -37,6 +37,12 @@ type RouteController struct {
 	beego.Controller
 }
 
+func (r *RouteController) TimekeyGetter() {
+	tk := models.TimeKeyGetFull()
+	r.Data["json"] = tk
+	r.ServeJSON()
+}
+
 func (r *RouteController) DataEmiter() {
 	ip := DataInput{}
 	json.Unmarshal(r.Ctx.Input.RequestBody, &ip)
@@ -44,15 +50,18 @@ func (r *RouteController) DataEmiter() {
 		ip.Time = time.Now()
 	}
 
-	startstation := models.GetLocation((*models.Coordinate)(ip.Source))
-	destinationstation := models.GetLocation((*models.Coordinate)(ip.Destination))
+	// startstation := models.GetLocation((*models.Coordinate)(ip.Source))
+	// destinationstation := models.GetLocation((*models.Coordinate)(ip.Destination))
 
-	waiter := models.GetTime(startstation, &ip.Time)
-	startNode := models.NodeCreate(startstation, &ip.Time)
-	endNode := models.NodeCreate(destinationstation, &ip.Time)
+	// waiter := models.GetTime(startstation, &ip.Time)
+	// startNode := models.NodeCreate(startstation, &ip.Time)
+	// endNode := models.NodeCreate(destinationstation, &ip.Time)
 
-	op := &DataOutput{Start: (*Node)(startNode), End: (*Node)(endNode), Wait: waiter}
+	// op := &DataOutput{Start: (*Node)(startNode), End: (*Node)(endNode), Wait: waiter}
 
-	r.Data["json"] = map[string]DataOutput{"Route": *op}
+	loc := models.GetLocation((*models.Coordinate)(ip.Source))
+
+	// r.Data["json"] = map[string]DataOutput{"Route": *op}
+	r.Data["json"] = loc
 	r.ServeJSON()
 }

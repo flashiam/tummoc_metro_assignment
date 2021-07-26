@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"time"
+
 	. "tummoc/micro"
 
 	"github.com/beego/beego/v2/client/orm"
@@ -25,10 +26,23 @@ type TimeKeyPlay interface {
 	TimeKeyDeletes()
 }
 
+func init() {
+	// orm.ResetModelCache()
+
+	orm.RegisterDriver("postgres", orm.DRPostgres)
+	orm.RegisterDataBase("default", "postgres",
+		"user=tummoc password=specsoid host=127.0.0.1 port=5432 dbname=tummoc sslmode=disable")
+	orm.SetMaxIdleConns("default", 10)
+	orm.SetMaxOpenConns("default", 100)
+	orm.DefaultTimeLoc = time.Local
+	orm.RegisterModel(new(Route), new(Station), new(TimeKey), new(Sprint), new(Location))
+
+}
+
 type Location struct {
 	LocId     int64   `orm:"index;unique;pk"`
-	Latitude  float32 `orm:"digits(8);decimals(6)"`
-	Longitude float32 `orm:"digits(8);decimals(6)"`
+	Latitude  float64 `orm:"digits(8);decimals(6)"`
+	Longitude float64 `orm:"digits(8);decimals(6)"`
 }
 type Station struct {
 	StationId int64 `orm:"index;unique;pk"`
@@ -77,11 +91,11 @@ func TimeKeyGet(timekeyid int64) TimeKey {
 	return timekey
 }
 
-func TimeKeyGetFull() []*TimeKey {
+func TimeKeyGetFull() *TimeKey {
 	o := orm.NewOrm()
 	timekey := new(TimeKey)
 	qs := o.QueryTable(timekey)
-	var t []*TimeKey
+	var t *TimeKey
 	qs.All(t)
 	return t
 }
@@ -229,25 +243,34 @@ type Coordinate struct {
 }
 
 func GetLocation(coordinate *Coordinate) *Station {
-	o := orm.NewOrm()
-	location := new(Location)
-	qs := o.QueryTable(location)
-	var l []*Location
-	qs.All(l)
 
-	var min float64 = Distance(float64(l[0].Latitude), float64(l[0].Longitude), coordinate.Lats, coordinate.Longs)
+	or := orm.NewOrm()
+	location := new(Location)
+	qs := or.QueryTable(location)
+	var l []*Location
+	qs.All(&l)
+
+	// return l
+
+	var min float64 = Distance(l[0].Latitude, l[0].Longitude, coordinate.Lats, coordinate.Longs)
 	var locid int64 = l[0].LocId
 
 	for _, j := range l {
-		d := Distance(float64(j.Latitude), float64(j.Longitude), coordinate.Lats, coordinate.Longs)
+		d := Distance(j.Latitude, j.Longitude, coordinate.Lats, coordinate.Longs)
 		if min > d {
 			min = d
 			locid = j.LocId
+		} else {
+			locid = l[0].LocId
 		}
 	}
 
-	station := Station{Location: &Location{LocId: locid}}
-	err := o.Read(&station)
+	fmt.Println(locid)
+	locs := Location{LocId: locid}
+	or.Read(&locs)
+
+	station := &Station{Location: &locs}
+	err := or.Read(&station)
 
 	if err == orm.ErrNoRows {
 		fmt.Println("No result found")
@@ -257,15 +280,15 @@ func GetLocation(coordinate *Coordinate) *Station {
 		fmt.Println(station.StationId)
 	}
 
-	return &station
+	return station
 }
 
 func GetTime(station *Station, time *time.Time) int64 {
 	timekeyforthisstation := TimeKey{Center: station}
 
-	o := orm.NewOrm()
+	or := orm.NewOrm()
 	sprint := new(Sprint)
-	qs := o.QueryTable(sprint)
+	qs := or.QueryTable(sprint)
 	var s []*Sprint
 	qs.All(s)
 
